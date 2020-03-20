@@ -77,6 +77,7 @@ export function reducer(state = initialState, action: UnionOf<typeof ACCOUNTS_AC
                         progress: {},
                         makeReadMailParams: null,
                         notifications: {
+                            calendarLoggedIn: false,
                             loggedIn: false,
                             pageType: {url: "", type: "unknown"},
                             unread: 0,

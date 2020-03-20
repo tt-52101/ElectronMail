@@ -1,3 +1,4 @@
+import {CalendarEvent, CalendarMember} from "src/electron-preload/webview/lib/rest-model/response-entity/calendar";
 import {Contact, Context, Conversation, Message} from "src/electron-preload/webview/lib/rest-model/response-entity/mail";
 import {Event} from "src/electron-preload/webview/lib/rest-model/response-entity/event";
 import {Label} from "src/electron-preload/webview/lib/rest-model/response-entity/folder";
@@ -51,6 +52,21 @@ export interface ContactsResponse extends Response {
 
 export interface LabelsResponse extends Response {
     Labels: Label[];
+}
+
+// GET https://beta.protonmail.com/api/calendars/<Calendar.ID>/members
+export interface CalendarMembersResponse {
+    Members: CalendarMember[];
+}
+
+// GET https://beta.protonmail.com/api/calendars/<Calendar.ID>/events?Start=&End=&Timezone=&PageSize=100&Page=0
+export interface CalendarEvents {
+    Events: CalendarEvent[];
+}
+
+// GET https://beta.protonmail.com/api/calendars/<Calendar.ID>/alarms?Start=&End=&PageSize=100
+export interface CalendarAlarms {
+    Alarms: CalendarAlarms[];
 }
 
 export type LatestEventResponse = Event["EventID"];

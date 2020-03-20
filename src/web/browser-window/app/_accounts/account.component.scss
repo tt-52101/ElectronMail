@@ -12,7 +12,8 @@
     background-color: $app-color-bg-dark-1;
 
     &:not(.vm-live) {
-        &::ng-deep #{$app-prefix}-account-view-primary {
+        &::ng-deep #{$app-prefix}-account-view-primary,
+        &::ng-deep #{$app-prefix}-account-view-calendar {
             display: none;
         }
     }
