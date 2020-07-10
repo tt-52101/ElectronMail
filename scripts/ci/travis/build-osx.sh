@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ev
+set -Eeuo pipefail
 
 ./scripts/ci/prepare-webclients.sh
 

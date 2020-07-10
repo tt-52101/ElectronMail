@@ -4,38 +4,13 @@ import path from "path";
 import {promisify} from "util";
 
 import {CWD, LOG, LOG_LEVELS, execShell} from "scripts/lib";
-import {FolderAsDomainEntry, execAccountTypeFlow, printAndWriteFile} from "./lib";
+import {FOLDER_AS_DOMAIN_ENTRIES} from "./const";
 import {PROVIDER_REPOS} from "src/shared/constants";
-
-const folderAsDomainEntries: Array<FolderAsDomainEntry<{
-    configApiParam:
-        | "electron-mail:app.protonmail.ch"
-        | "electron-mail:mail.protonmail.com"
-        | "electron-mail:protonirockerxow.onion";
-}>> = [
-    {
-        folderNameAsDomain: "app.protonmail.ch",
-        options: {
-            configApiParam: "electron-mail:app.protonmail.ch",
-        },
-    },
-    {
-        folderNameAsDomain: "mail.protonmail.com",
-        options: {
-            configApiParam: "electron-mail:mail.protonmail.com",
-        },
-    },
-    {
-        folderNameAsDomain: "protonirockerxow.onion",
-        options: {
-            configApiParam: "electron-mail:protonirockerxow.onion",
-        },
-    },
-];
+import {execAccountTypeFlow, printAndWriteFile} from "./lib";
 
 async function configure(
     {cwd, envFileName = "./appConfig.json", repoType}: { cwd: string; envFileName?: string; repoType: keyof typeof PROVIDER_REPOS },
-    {folderNameAsDomain, options}: Unpacked<typeof folderAsDomainEntries>,
+    {folderNameAsDomain, options}: Unpacked<typeof FOLDER_AS_DOMAIN_ENTRIES>,
 ): Promise<{ configApiParam: string }> {
     const {configApiParam} = options;
 
@@ -120,7 +95,7 @@ async function writeProtonConfigFile(
 
         await execAccountTypeFlow({
             repoType,
-            folderAsDomainEntries,
+            folderAsDomainEntries: FOLDER_AS_DOMAIN_ENTRIES,
             flows: {
                 async postClone({repoDir}) {
                     await execShell([
@@ -192,7 +167,7 @@ async function writeProtonConfigFile(
 
         await execAccountTypeFlow({
             repoType,
-            folderAsDomainEntries,
+            folderAsDomainEntries: FOLDER_AS_DOMAIN_ENTRIES,
             destSubFolder,
             flows: {
                 build: async ({repoDir: cwd, folderAsDomainEntry}) => {

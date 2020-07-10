@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -ev
+set -Eeuo pipefail
 
 CHROME_SANDBOX_FILE=$1
 

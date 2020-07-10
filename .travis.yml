@@ -1,13 +1,51 @@
 # TODO improve artifacts sharing between the jobs, keep track of the following issues:
 # - https://github.com/travis-ci/travis-ci/issues/7590
+# - https://travis-ci.community/t/introducing-workspaces/4249
+# - https://travis-ci.community/t/allow-to-restore-a-workspace-in-another-os/9165
+# - https://travis-ci.community/t/workspaces-do-not-work-nicely-with-cross-platform-builds/4461
 # - https://travis-ci.community/t/using-unified-cache-control-cache-identity/1531
+# - https://github.com/travis-ci/travis-build/pull/1923
 
 branches:
   only:
-    - master
+    - wip-ci-drop-appveyor-use
 
-node_js: 12
 language: node_js
+node_js: 12
+
+cache:
+  yarn: false
+  npm: false
+
+embedding-linux-common: &embedding-linux-common-anchor
+  os: linux
+  dist: bionic
+  env:
+    # needed for: native modules compiling
+    - CC=gcc-7 CXX=g++-7
+  addons:
+    apt:
+      packages:
+        # needed for: native modules compiling
+        - g++-7
+        # needed for: compiling "desktop-idle" native module
+        - libxss-dev
+        # needed for: keychain initialization and compiling "node-keytar" native module
+        - gnome-keyring
+        - libgnome-keyring-dev
+        - libsecret-1-dev
+        # needed for: keychain access testing before running e2e tests (see "scripts/ci/add-secret-service-item-assert.py")
+        - python3-secretstorage
+        # needed for: tweaking snap package ("unsquashfs" binary)
+        - squashfs-tools
+
+embedding-use-webclients-common: &embedding-use-webclients-common-anchor
+  workspaces:
+    use:
+      - 'webclients-artifact-mail-settings-osx'
+      - 'webclients-artifact-contacts-osx'
+      - 'webclients-artifact-calendar-osx'
+      - 'webclients-artifact-webclient-osx'
 
 embedding-prepare-webclients-mail-settings: &embedding-prepare-webclients-mail-settings-anchor
   cache:
@@ -49,50 +87,35 @@ embedding-prepare-webclients-webclient: &embedding-prepare-webclients-webclient-
     - ELECTRON_MAIL_PREPARE_WEBCLIENTS_REPOS_ONLY="WebClient"
   script: ./scripts/ci/prepare-webclients.sh
 
-embedding-linux-common: &embedding-linux-common-anchor
-  os: linux
-  dist: bionic
-  env:
-    # needed for: native modules compiling
-    - CC=gcc-7 CXX=g++-7
-  addons:
-    apt:
-      packages:
-        # needed for: native modules compiling
-        - g++-7
-        # needed for: compiling "desktop-idle" native module
-        - libxss-dev
-        # needed for: keychain initialization and compiling "node-keytar" native module
-        - gnome-keyring
-        - libgnome-keyring-dev
-        - libsecret-1-dev
-        # needed for: keychain access testing before running e2e tests (see "scripts/ci/add-secret-service-item-assert.py")
-        - python3-secretstorage
-        # needed for: tweaking snap package ("unsquashfs" binary)
-        - squashfs-tools
-
-embedding-macos-common: &embedding-macos-common-anchor
-  os: osx
-  osx_image: xcode9.4
-
-embedding-build-app-common: &embedding-build-app-common-anchor
-  cache:
-    yarn: false
-    npm: false
-  after_failure:
-    - tar -cvf e2e-logs.tar ./output/e2e
-    - yarn scripts/transfer upload e2e-logs.tar
-
 before_install:
-  - | # installing the most recent yarn version
-    curl -o- -L https://yarnpkg.com/install.sh | bash;
-    export PATH="$HOME/.yarn/bin:$PATH";
+  - |-
+    case "$TRAVIS_OS_NAME" in
+    "windows")
+        # enable running local powershell scripts
+        powershell -Command 'Set-ExecutionPolicy -ExecutionPolicy RemoteSigned'
+        # tackle the performance issue of "yarn install" execution, see https://travis-ci.community/t/current-known-issues-please-read-this-before-posting-a-new-topic/264/15
+        echo node.exe location: $(where.exe node.exe)
+        echo yarn cache location: $(yarn cache dir)
+        export NODEPATH=$(where.exe node.exe)
+        export PROJECTDIR=$(pwd)
+        export YARNCACHE=$(yarn cache dir)
+        export TEMPDIR=$LOCALAPPDATA\\Temp
+        powershell Add-MpPreference -ExclusionProcess ${NODEPATH}
+        powershell Add-MpPreference -ExclusionPath ${YARNCACHE}
+        powershell Add-MpPreference -ExclusionPath ${PROJECTDIR}
+        powershell Add-MpPreference -ExclusionPath ${TEMPDIR}
+        powershell Start-Process -PassThru -Wait PowerShell -ArgumentList "'-Command Set-MpPreference -DisableArchiveScanning \$true'"
+        powershell Start-Process -PassThru -Wait PowerShell -ArgumentList "'-Command Set-MpPreference -DisableBehaviorMonitoring \$true'"
+        powershell Start-Process -PassThru -Wait PowerShell -ArgumentList "'-Command Set-MpPreference -DisableRealtimeMonitoring \$true'"
+        ;;
+    esac
+
 install:
   - node --version
   - npm --version
   - yarn --version
   - npx envinfo
-  - yarn install --pure-lockfile
+  - yarn install --pure-lockfile --network-timeout 1000000
 notifications:
   email:
     on_success: never
@@ -100,90 +123,76 @@ notifications:
 
 jobs:
   include:
-    # pre-building proton web clients in individual jobs to workaround the issue of travis dropping long-running jobs on free plan
-    # [mail-settings]
+    # proton clients prepared by jobs used to workaround the issue of travis dropping long-running jobs on a free plan
+    # mail-settings
     - stage: 'build proton clients'
-      <<: *embedding-linux-common-anchor
+      os: osx
       <<: *embedding-prepare-webclients-mail-settings-anchor
       workspaces:
         create:
-          name: 'linux-webclients-artifact-mail-settings'
+          name: 'webclients-artifact-mail-settings-osx'
           paths:
             - output/git/proton-mail-settings
+    # contacts
     - stage: 'build proton clients'
-      <<: *embedding-macos-common-anchor
-      <<: *embedding-prepare-webclients-mail-settings-anchor
-      workspaces:
-        create:
-          name: 'macos-webclients-artifact-mail-settings'
-          paths:
-            - output/git/proton-mail-settings
-    # [contacts]
-    - stage: 'build proton clients'
-      <<: *embedding-linux-common-anchor
+      os: osx
       <<: *embedding-prepare-webclients-contacts-anchor
       workspaces:
         create:
-          name: 'linux-webclients-artifact-contacts'
+          name: 'webclients-artifact-contacts-osx'
           paths:
             - output/git/proton-contacts
+    # calendar
     - stage: 'build proton clients'
-      <<: *embedding-macos-common-anchor
-      <<: *embedding-prepare-webclients-contacts-anchor
-      workspaces:
-        create:
-          name: 'macos-webclients-artifact-contacts'
-          paths:
-            - output/git/proton-contacts
-    # [calendar]
-    - stage: 'build proton clients'
-      <<: *embedding-linux-common-anchor
+      os: osx
       <<: *embedding-prepare-webclients-calendar-anchor
       workspaces:
         create:
-          name: 'linux-webclients-artifact-calendar'
+          name: 'webclients-artifact-calendar-osx'
           paths:
             - output/git/proton-calendar
+    # WebClient
     - stage: 'build proton clients'
-      <<: *embedding-macos-common-anchor
-      <<: *embedding-prepare-webclients-calendar-anchor
-      workspaces:
-        create:
-          name: 'macos-webclients-artifact-calendar'
-          paths:
-            - output/git/proton-calendar
-    # [WebClient]
-    - stage: 'build proton clients'
-      <<: *embedding-linux-common-anchor
+      os: osx
       <<: *embedding-prepare-webclients-webclient-anchor
       workspaces:
         create:
-          name: 'linux-webclients-artifact-webclient'
+          name: 'webclients-artifact-webclient-osx'
           paths:
             - output/git/WebClient
-    - stage: 'build proton clients'
-      <<: *embedding-macos-common-anchor
-      <<: *embedding-prepare-webclients-webclient-anchor
-      workspaces:
-        create:
-          name: 'macos-webclients-artifact-webclient'
-          paths:
-            - output/git/WebClient
-    # [build]
+    # app building stages
+    - stage: 'build app'
+      os: windows
+      <<: *embedding-use-webclients-common-anchor
+      script: ./scripts/ci/travis/build-windows.sh
+    - stage: 'build app'
+      os: osx
+      osx_image: xcode9.4
+      <<: *embedding-use-webclients-common-anchor
+      env:
+        - ARTIFACT_NAME_POSTFIX="-high-sierra"
+      script: ./scripts/ci/travis/build-osx.sh
+    - stage: 'build app'
+      os: osx
+      osx_image: xcode11.3 # same xcode version as used at "appveyor" for "mojave" system version
+      <<: *embedding-use-webclients-common-anchor
+      env:
+        - ARTIFACT_NAME_POSTFIX="-mojave"
+      script: ./scripts/ci/travis/build-osx.sh
+    - stage: 'build app'
+      os: osx
+      osx_image: xcode11.5 # same xcode version as used at "appveyor" for "catalina" system version
+      <<: *embedding-use-webclients-common-anchor
+      env:
+        - ARTIFACT_NAME_POSTFIX="-catalina"
+      script: ./scripts/ci/travis/build-osx.sh
     - stage: 'build app'
       <<: *embedding-linux-common-anchor
-      <<: *embedding-build-app-common-anchor
-      workspaces:
-        use:
-          - 'linux-webclients-artifact-mail-settings'
-          - 'linux-webclients-artifact-contacts'
-          - 'linux-webclients-artifact-calendar'
-          - 'linux-webclients-artifact-webclient'
+      <<: *embedding-use-webclients-common-anchor
       sudo: required
       services:
         - docker
-        # needed for: running e2e tests
-        - xvfb
+        - xvfb # needed for: running e2e tests
       before_script:
         - | # init dbus
           NO_AT_BRIDGE=1;
@@ -193,19 +202,4 @@ jobs:
         #  eval $(echo -n "" | /usr/bin/gnome-keyring-daemon --login);
         #  eval $(/usr/bin/gnome-keyring-daemon --components=secrets --start);
         #  python3 ./scripts/ci/add-secret-service-item-assert.py;
-      env:
-        - CI_WEBCLIENTS_JOB_REMOVE_OUTPUT_GIT_DIR="0"
       script: ./scripts/ci/travis/build-linux.sh
-    - stage: 'build app'
-      <<: *embedding-macos-common-anchor
-      <<: *embedding-build-app-common-anchor
-      workspaces:
-        use:
-          - 'macos-webclients-artifact-mail-settings'
-          - 'macos-webclients-artifact-contacts'
-          - 'macos-webclients-artifact-calendar'
-          - 'macos-webclients-artifact-webclient'
-      env:
-        - ARTIFACT_NAME_POSTFIX="-high-sierra"
-        - CI_WEBCLIENTS_JOB_REMOVE_OUTPUT_GIT_DIR="0"
-      script: ./scripts/ci/travis/build-osx.sh

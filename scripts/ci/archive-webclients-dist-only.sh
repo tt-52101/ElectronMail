@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ev
+set -Eeuo pipefail
 
 ARCHIVE_FILE=$1
 

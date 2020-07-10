@@ -5,6 +5,7 @@ import path from "path";
 import pathIsInside from "path-is-inside";
 
 import {CWD, LOG, LOG_LEVELS, execShell} from "scripts/lib";
+import {Flow, FolderAsDomainEntry} from "./model";
 import {PROVIDER_REPOS, WEB_CLIENTS_BLANK_HTML_FILE_NAME} from "src/shared/constants";
 
 const REPOS_ONLY_FILTER: ReadonlyArray<keyof typeof PROVIDER_REPOS> = (() => {
@@ -34,18 +35,6 @@ if (!BASE_DEST_DIR) {
 if (!pathIsInside(path.resolve(CWD, BASE_DEST_DIR), CWD)) {
     throw new Error(`Invalid base destination directory argument value: ${LOG_LEVELS.value(BASE_DEST_DIR)}`);
 }
-
-export interface FolderAsDomainEntry<T extends any = any> { // eslint-disable-line @typescript-eslint/no-explicit-any
-    folderNameAsDomain: string;
-    options: T;
-}
-
-export type Flow<O> = (
-    arg: {
-        repoDir: string;
-        folderAsDomainEntry: FolderAsDomainEntry<O>;
-    },
-) => Promise<void>;
 
 async function clone(repoType: keyof typeof PROVIDER_REPOS, dir: string): Promise<void> {
     const {repo, commit} = PROVIDER_REPOS[repoType];
