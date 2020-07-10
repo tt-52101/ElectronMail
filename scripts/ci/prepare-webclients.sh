@@ -1,11 +1,6 @@
 #!/bin/bash
 
 set -Eeuo pipefail
-set -x
-
-if [ -n "$CI" ] && [ "$CI_WEBCLIENTS_JOB_REMOVE_OUTPUT_GIT_DIR" == "1" ]; then
-    rm -rf ./output/git
-fi
 
 # the script builds the web clients and then removes all the generated files except the actual dists
 # so then only the actual dists without extra stuff could be cached by CI system
@@ -22,7 +17,7 @@ while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
 kill %1
 
 # create archive
-./scripts/ci/nix/archive-webclients-dist-only.sh $ARCHIVE_FILE
+./scripts/ci/archive-webclients-dist-only.sh $ARCHIVE_FILE
 ls -lh
 
 # keep only prepared web clients in the cache (we cache only "./output" folder)

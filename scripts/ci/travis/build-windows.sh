@@ -1,9 +1,6 @@
 #!/bin/bash
 
 set -Eeuo pipefail
-set -x
-
-./scripts/ci/nix/prepare-webclients.sh
 
 yarn app:dist
 yarn test:e2e

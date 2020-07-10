@@ -1,9 +1,8 @@
 #!/bin/bash
 
 set -Eeuo pipefail
-set -x
 
-./scripts/ci/nix/prepare-webclients.sh
+./scripts/ci/prepare-webclients.sh
 
 yarn app:dist
 
