@@ -1,8 +1,9 @@
 #!/bin/bash
 
-set -ev
+set -Eeuo pipefail
+set -x
 
-./scripts/ci/prepare-webclients.sh
+./scripts/ci/nix/prepare-webclients.sh
 
 yarn app:dist
 
@@ -13,9 +14,8 @@ sudo ./scripts/prepare-chrome-sandbox.sh ./node_modules/electron/dist/chrome-san
 
 yarn test:e2e
 
-# --env-file: https://github.com/electron-userland/electron-builder/issues/2450
-
 # TODO use own docker image
+# --env-file: https://github.com/electron-userland/electron-builder/issues/2450
 docker run --rm -ti \
     --env-file <(env | grep -vE '\r|\n' | grep -iE '^(DEBUG|NODE_|ELECTRON_|YARN_|NPM_|CI|CIRCLE|TRAVIS|APPVEYOR|BUILD_)[A-Z_]*=') \
     -v ${PWD}:/project \

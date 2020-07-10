@@ -1,6 +1,7 @@
 #!/bin/bash
 
-set -ev
+set -Eeuo pipefail
+set -x
 
 if [ -n "$CI" ] && [ "$CI_WEBCLIENTS_JOB_REMOVE_OUTPUT_GIT_DIR" == "1" ]; then
     rm -rf ./output/git
@@ -21,7 +22,7 @@ while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
 kill %1
 
 # create archive
-./scripts/ci/archive-webclients-dist-only.sh $ARCHIVE_FILE
+./scripts/ci/nix/archive-webclients-dist-only.sh $ARCHIVE_FILE
 ls -lh
 
 # keep only prepared web clients in the cache (we cache only "./output" folder)
